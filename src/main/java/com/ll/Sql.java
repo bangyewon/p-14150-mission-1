@@ -2,10 +2,7 @@ package com.ll;
 
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Sql {
     //TODO 내부 DB연결 과정이 겹침 리팩터링 필요
@@ -32,7 +29,17 @@ public class Sql {
         return this;
     }
 
-    // statment : ? 문자열 치환 불가능 PreparedStatement는 치환 가능 -> 이미 append()에서 치환 후이기에 sttatment로 가능
+    public Sql appendIn(String command, Object... params) {
+        StringJoiner sj = new StringJoiner(", ");
+        for (Object param : params) {
+            sj.add("'" + param + "'");
+        }
+        String replaced = command.replaceFirst("\\?", sj.toString());
+        sb.append(replaced).append("\n");
+        return this;
+    }
+
+    // statment : ? 문자열 치환 불가능 PreparedStatement는 치환 가능 -> 이미 append()에서 치환 후이기에 statement로 가능
     public long insert() {
 
         String sql = sb.toString();
@@ -127,18 +134,74 @@ public class Sql {
             throw new RuntimeException(e);
         }
     }
+
     public LocalDateTime selectDatetime() {
         String sql = sb.toString();
         try (
                 Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql);
-                ) {
+        ) {
             // rs에서 시간 값 꺼내서 LocalDateTime 변환
-            if(rs.next()) {
+            if (rs.next()) {
                 return rs.getTimestamp(1).toLocalDateTime();
             }
             throw new RuntimeException("결과가 없습니다.");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Long selectLong() {
+        String sql = sb.toString();
+
+        try (
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(sql);
+        ) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+
+            throw new RuntimeException("조회 결과가 없습니다.");
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String selectString() {
+        String sql = sb.toString();
+        try (
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(sql);
+        ) {
+            if (rs.next()) {
+                return rs.getString(1);
+            }
+
+            throw new RuntimeException("조회 결과가 없습니다.");
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Boolean selectBoolean() {
+        String sql = sb.toString();
+        try (
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(sql);
+        ) {
+            if (rs.next()) {
+                return rs.getBoolean(1);
+            }
+
+            throw new RuntimeException("조회 결과가 없습니다.");
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
