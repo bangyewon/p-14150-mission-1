@@ -1,6 +1,7 @@
 package com.ll;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
@@ -14,13 +15,16 @@ public class Sql {
     }
 
     public Sql append(String command) {
+        sb.append(command).append("\n");
         return this;
     }
 
     public Sql append(String command, Object param) {
+        String replaced = command.replaceFirst("\\?","'" + param + "'");
+        sb.append(replaced).append("\n");
         return this;
     }
-
+    // statment : ? 문자열 치환 불가능 PreparedStatement는 치환 가능 -> 이미 append()에서 치환 후이기에 sttatment로 가능
     public long insert() {
 
         String sql = sb.toString();

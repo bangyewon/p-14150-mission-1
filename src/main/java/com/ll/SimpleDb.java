@@ -2,6 +2,7 @@ package com.ll;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 
 public class SimpleDb {
@@ -42,21 +43,30 @@ public class SimpleDb {
         }
     }
 
-    public void run(String command,String title,String body,boolean isBlind) {
+    public void run(String command,Object... parmas) {
         try (
                 Connection connection = DriverManager.getConnection(url, username, password);
-                Statement stat = connection.createStatement();
+                PreparedStatement pstmt = connection.prepareStatement(command);
         ) {
-            // TODO 이거 애매 수정 필요
-            for(int i = 1; i < 7; i++) {
-                stat.execute(command);
-
+            // 문자열 치환 아닌 PreparedStatement 사용
+            for(int i = 0; i < parmas.length; i++) {
+                pstmt.setObject(i + 1,parmas[i]);
             }
+            pstmt.execute();
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
     public Sql genSql() {
-        return new Sql();
+        return new Sql(this);
+    }
+
+    public Connection getConnection() {
+        try {
+            return DriverManager.getConnection(url, username, password);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
