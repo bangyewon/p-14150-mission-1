@@ -1,5 +1,6 @@
 package com.ll;
 
+import java.lang.reflect.Field;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -112,6 +113,49 @@ public class Sql {
         }
     }
 
+    /**
+     * 1. SQL 조회 결과 받기
+     * 2. 각 행을 Article 객체로 변환
+     * 3. 리스트로 반환
+     */
+    public <T> List<T> selectRows(Class<T> cls) {
+        List<T> rows = new ArrayList<>();
+        String sql = sb.toString();
+        try (
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(sql);
+        ) {
+            ResultSetMetaData data = rs.getMetaData();
+            int count = data.getColumnCount();
+
+            while (rs.next()) {
+                T obj = cls.getDeclaredConstructor().newInstance();
+
+                for (int i = 1; i <= count; i++) {
+                    String fieldName = data.getColumnName(i);
+                    Object value = rs.getObject(i);
+
+                    Field field = cls.getDeclaredField(fieldName);
+                    field.setAccessible(true);
+
+                    if (value instanceof Timestamp) {
+                        value = ((Timestamp) value).toLocalDateTime();
+                    }
+
+                    field.set(obj, value);
+                }
+
+                rows.add(obj);
+            }
+
+            return rows;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
     public Map<String, Object> selectRow() {
         Map<String, Object> row = new HashMap<>();
         String sql = sb.toString();
@@ -202,6 +246,32 @@ public class Sql {
 
             throw new RuntimeException("조회 결과가 없습니다.");
 
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * sql 내용 받음 -> 조회 후 id꺼내서 리스트로 변환
+     */
+    public List<Long> selectLongs() {
+        List<Long> foundIds = new ArrayList<>();
+        String sql = sb.toString();
+        try (
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(sql);
+        ) {
+            ResultSetMetaData data = rs.getMetaData();
+            int count = data.getColumnCount();
+            while (rs.next()) {
+                long result = 0;
+                for (int i = 1; i <= count; i++) {
+                    result = rs.getLong(i);
+                }
+                foundIds.add(result);
+            }
+            return foundIds;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
