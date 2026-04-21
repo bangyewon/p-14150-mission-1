@@ -60,4 +60,15 @@ public class Sql {
             throw new RuntimeException(e);
         }
     }
+    public int delete() {
+        String sql = sb.toString();
+        try (
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ) {
+            return stat.executeUpdate(sql);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
