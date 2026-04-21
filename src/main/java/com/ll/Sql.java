@@ -1,16 +1,17 @@
 package com.ll;
 
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class Sql {
+    //TODO 내부 DB연결 과정이 겹침 리팩터링 필요
 
     private final SimpleDb simpleDb;
     private final StringBuilder sb = new StringBuilder(); // sql 쌓임
-    private final ArrayList<Map<String, Object>> rows = new ArrayList<>();
 
     public Sql(SimpleDb simpleDb) {
         this.simpleDb = simpleDb;
@@ -78,6 +79,7 @@ public class Sql {
 
     //executeQuery() : 조회 결과가 ResultSet에 들어옴
     public List<Map<String, Object>> selectRows() {
+        ArrayList<Map<String, Object>> rows = new ArrayList<>();
         String sql = sb.toString();
         try (
                 Connection connection = simpleDb.getConnection();
@@ -98,6 +100,45 @@ public class Sql {
                 rows.add(row);
             }
             return rows;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Map<String, Object> selectRow() {
+        Map<String, Object> row = new HashMap<>();
+        String sql = sb.toString();
+        try (
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(sql);
+        ) {
+            ResultSetMetaData data = rs.getMetaData();
+            int count = data.getColumnCount();
+            if (rs.next()) {
+                for (int i = 1; i <= count; i++) {
+                    String name = data.getColumnName(i);
+                    Object value = rs.getObject(i);
+                    row.put(name, value);
+                }
+            }
+            return row;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public LocalDateTime selectDatetime() {
+        String sql = sb.toString();
+        try (
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(sql);
+                ) {
+            // rs에서 시간 값 꺼내서 LocalDateTime 변환
+            if(rs.next()) {
+                return rs.getTimestamp(1).toLocalDateTime();
+            }
+            throw new RuntimeException("결과가 없습니다.");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
