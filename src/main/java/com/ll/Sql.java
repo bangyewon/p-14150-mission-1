@@ -19,8 +19,12 @@ public class Sql {
         return this;
     }
 
-    public Sql append(String command, Object param) {
-        String replaced = command.replaceFirst("\\?","'" + param + "'");
+    public Sql append(String command, Object... params) {
+        String replaced = command;
+
+        for (Object param : params) {
+            replaced = replaced.replaceFirst("\\?", "'" + param + "'");
+        }
         sb.append(replaced).append("\n");
         return this;
     }
@@ -44,7 +48,16 @@ public class Sql {
             throw new RuntimeException(e);
         }
     }
-//    public int update() {
-//        return;
-//    }
+
+    public int update() {
+        String sql = sb.toString();
+        try(
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ) {
+            return stat.executeUpdate(sql);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
