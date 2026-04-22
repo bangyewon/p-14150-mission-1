@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 public class Sql {
-    //TODO 내부 DB연결 과정이 겹침 리팩터링 필요
+    //TODO 겹치는 부분 공통화 리팩터링 예정
 
     private final SimpleDb simpleDb;
     private final StringBuilder sb = new StringBuilder(); // sql 쌓임
@@ -42,22 +42,34 @@ public class Sql {
 
     // statment : ? 문자열 치환 불가능 PreparedStatement는 치환 가능 -> 이미 append()에서 치환 후이기에 statement로 가능
     public long insert() {
-
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
 
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
         ) {
             //excuteUpdate() : 행의 개수를 반환
             stat.executeUpdate(sql, Statement.RETURN_GENERATED_KEYS);
-            ResultSet rs = stat.getGeneratedKeys();
-            if (rs.next()) { // ResultSet의 첫번째 컬럼 값 : PK
-                return rs.getLong(1);
+            // ResultSet의 첫번째 컬럼 값 : PK
+            try (ResultSet rs = stat.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
             }
+
             throw new RuntimeException("PK를 갖고올 수 없습니다.");
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            if (!simpleDb.isInTransaction()) {
+                try {
+                    if (connection != null && !connection.isClosed()) {
+                        connection.close();
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
     }
 
@@ -179,6 +191,39 @@ public class Sql {
         }
     }
 
+    public <T> T selectRow(Class<T> cls) {
+        Map<String, Object> row = new HashMap<>();
+        String sql = sb.toString();
+        try (
+                Connection connection = simpleDb.getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(sql);
+        ) {
+            ResultSetMetaData data = rs.getMetaData();
+            int count = data.getColumnCount();
+            if (rs.next()) {
+                for (int i = 1; i <= count; i++) {
+                    String name = data.getColumnName(i);
+                    Object value = rs.getObject(i);
+                    row.put(name, value);
+                }
+            }
+            // HashMap -> 객체로 변환해야 함 제네릭하게 작동하기 위해서 리플렉션 사용
+            T obj = cls.getDeclaredConstructor().newInstance(); // cls 타입 객체 생성
+
+            for (String key : row.keySet()) { // 순회 후 매핑
+                Field field = cls.getDeclaredField(key);
+                field.setAccessible(true);
+                field.set(obj, row.get(key));
+            }
+
+            return obj;
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public LocalDateTime selectDatetime() {
         String sql = sb.toString();
         try (
@@ -276,4 +321,5 @@ public class Sql {
             throw new RuntimeException(e);
         }
     }
+
 }

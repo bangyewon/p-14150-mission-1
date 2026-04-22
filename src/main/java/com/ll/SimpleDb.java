@@ -6,6 +6,8 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 
 public class SimpleDb {
+    private Connection connection;
+    private boolean inTransaction = false; // 트랜잭션 중일땐 connection을 계속 반환해야하기에 트랜잭션 중인지 여부
     private String host;
     private String username;
     private String password;
@@ -43,14 +45,14 @@ public class SimpleDb {
         }
     }
 
-    public void run(String command,Object... parmas) {
+    public void run(String command, Object... parmas) {
         try (
                 Connection connection = DriverManager.getConnection(url, username, password);
                 PreparedStatement pstmt = connection.prepareStatement(command);
         ) {
             // 문자열 치환 아닌 PreparedStatement 사용
-            for(int i = 0; i < parmas.length; i++) {
-                pstmt.setObject(i + 1,parmas[i]);
+            for (int i = 0; i < parmas.length; i++) {
+                pstmt.setObject(i + 1, parmas[i]);
             }
             pstmt.execute();
 
@@ -58,15 +60,74 @@ public class SimpleDb {
             throw new RuntimeException(e);
         }
     }
+
     public Sql genSql() {
         return new Sql(this);
     }
 
     public Connection getConnection() {
         try {
+            if (inTransaction) {
+                if (connection == null || connection.isClosed()) {
+                    connection = DriverManager.getConnection(url, username, password);
+                }
+                return connection;
+            }
+
             return DriverManager.getConnection(url, username, password);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void close() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void startTransaction() {
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false); // AutoCommit을 끄는 순간 sql -> 트랜잭션으로 묶임
+            inTransaction = true;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void rollback() {
+        // connection연결이 되어있다면 롤백 가능
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.rollback();
+                connection.setAutoCommit(true);
+            }
+            inTransaction = false;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void commit() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.commit();
+                connection.setAutoCommit(true);
+                connection.close();
+            }
+            connection = null;
+            inTransaction = false;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public boolean isInTransaction() {
+        return inTransaction;
     }
 }
