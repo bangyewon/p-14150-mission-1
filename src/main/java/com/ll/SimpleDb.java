@@ -122,8 +122,8 @@ public class SimpleDb {
             if (connection != null && !connection.isClosed()) {
                 connection.rollback();
                 connection.setAutoCommit(true);
+                connection.close();
             }
-            inTransaction = false;
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {

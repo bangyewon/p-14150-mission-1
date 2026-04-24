@@ -122,15 +122,7 @@ public class Sql {
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            if (!simpleDb.isInTransaction()) {
-                try {
-                    if (connection != null && !connection.isClosed()) {
-                        connection.close();
-                    }
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
+            simpleDb.releaseConnection(connection);
         }
     }
 
@@ -220,10 +212,9 @@ public class Sql {
     }
 
     public Long selectLong() {
-        return executeQuery(rs ->
-        {
+        return executeQuery(rs -> {
             if (rs.next()) {
-                rs.getLong(1);
+                return rs.getLong(1);
             }
             throw new RuntimeException("조회 결과가 없어요.");
         });
@@ -232,7 +223,7 @@ public class Sql {
     public String selectString() {
         return executeQuery(rs -> {
             if (rs.next()) {
-                rs.getString(1);
+                return rs.getString(1);
             }
             throw new RuntimeException("조회 결과 없어요.");
         });
@@ -251,8 +242,8 @@ public class Sql {
      * sql 내용 받음 -> 조회 후 id꺼내서 리스트로 변환
      */
     public List<Long> selectLongs() {
-        List<Long> foundIds = new ArrayList<>();
         return executeQuery(rs -> {
+            List<Long> foundIds = new ArrayList<>();
             ResultSetMetaData data = rs.getMetaData();
             int count = data.getColumnCount();
             while (rs.next()) {
@@ -262,7 +253,7 @@ public class Sql {
                 }
                 foundIds.add(result);
             }
-            throw new RuntimeException("조회 결과 없어요.");
+            return foundIds;
         });
     }
 
