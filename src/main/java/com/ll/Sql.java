@@ -32,6 +32,46 @@ public class Sql {
         }
     }
 
+    private Map<String, Object> mapCurrentRow(ResultSet rs) throws Exception {
+        Map<String, Object> row = new HashMap<>();
+        ResultSetMetaData data = rs.getMetaData(); //컬럼에 관한 정보
+        int count = data.getColumnCount();
+
+        for (int i = 1; i <= count; i++) {
+            String name = data.getColumnName(i);
+            Object value = rs.getObject(i);
+
+            if (value instanceof Timestamp timestamp) {
+                value = timestamp.toLocalDateTime();
+            }
+
+            row.put(name, value);
+        }
+
+        return row;
+    }
+
+    private <T> T mapCurrentRow(ResultSet rs, Class<T> cls) throws Exception {
+        T obj = cls.getDeclaredConstructor().newInstance();
+        ResultSetMetaData data = rs.getMetaData();
+        int count = data.getColumnCount();
+
+        for (int i = 1; i <= count; i++) {
+            String fieldName = data.getColumnName(i);
+            Object value = rs.getObject(i);
+
+            if (value instanceof Timestamp timestamp) {
+                value = timestamp.toLocalDateTime();
+            }
+
+            Field field = cls.getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(obj, value);
+        }
+
+        return obj;
+    }
+
     public Sql(SimpleDb simpleDb) {
         this.simpleDb = simpleDb;
     }
@@ -124,32 +164,13 @@ public class Sql {
 
     //executeQuery() : 조회 결과가 ResultSet에 들어옴
     public List<Map<String, Object>> selectRows() {
-        ArrayList<Map<String, Object>> rows = new ArrayList<>();
-        String sql = sb.toString();
-        Connection connection = simpleDb.getConnection();
-        try (
-                Statement stat = connection.createStatement();
-                ResultSet rs = stat.executeQuery(sql); // 데이터에 관한 정보
-        ) {
-            ResultSetMetaData data = rs.getMetaData(); //컬럼에 관한 정보
-            int count = data.getColumnCount();
-            // 조회 : 결과가 여러줄 나옴 while()
+        return executeQuery(rs -> {
+            List<Map<String, Object>> rows = new ArrayList<>();
             while (rs.next()) {
-                Map<String, Object> row = new HashMap<>();
-                for (int i = 1; i <= count; i++) {
-                    // row의 이름과 값 꺼내야 함
-                    String name = data.getColumnName(i);
-                    Object value = rs.getObject(i);
-                    row.put(name, value);
-                }
-                rows.add(row);
+                rows.add(mapCurrentRow(rs));
             }
             return rows;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            simpleDb.releaseConnection(connection);
-        }
+        });
     }
 
     /**
@@ -158,103 +179,35 @@ public class Sql {
      * 3. 리스트로 반환
      */
     public <T> List<T> selectRows(Class<T> cls) {
-        List<T> rows = new ArrayList<>();
-        String sql = sb.toString();
-        Connection connection = simpleDb.getConnection();
-        try (
-                Statement stat = connection.createStatement();
-                ResultSet rs = stat.executeQuery(sql);
-        ) {
-            ResultSetMetaData data = rs.getMetaData();
-            int count = data.getColumnCount();
+        return executeQuery(rs -> {
+            List<T> rows = new ArrayList<>();
 
             while (rs.next()) {
-                T obj = cls.getDeclaredConstructor().newInstance();
-
-                for (int i = 1; i <= count; i++) {
-                    String fieldName = data.getColumnName(i);
-                    Object value = rs.getObject(i);
-
-                    Field field = cls.getDeclaredField(fieldName);
-                    field.setAccessible(true);
-
-                    if (value instanceof Timestamp) {
-                        value = ((Timestamp) value).toLocalDateTime();
-                    }
-
-                    field.set(obj, value);
-                }
-
-                rows.add(obj);
+                rows.add(mapCurrentRow(rs, cls));
             }
 
             return rows;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            simpleDb.releaseConnection(connection);
-        }
+        });
     }
 
 
     public Map<String, Object> selectRow() {
-        Map<String, Object> row = new HashMap<>();
-        String sql = sb.toString();
-        Connection connection = simpleDb.getConnection();
-        try (
-                Statement stat = connection.createStatement();
-                ResultSet rs = stat.executeQuery(sql);
-        ) {
-            ResultSetMetaData data = rs.getMetaData();
-            int count = data.getColumnCount();
-            if (rs.next()) {
-                for (int i = 1; i <= count; i++) {
-                    String name = data.getColumnName(i);
-                    Object value = rs.getObject(i);
-                    row.put(name, value);
-                }
+        return executeQuery(rs -> {
+            if (!rs.next()) {
+                return new HashMap<>();
             }
-            return row;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            simpleDb.releaseConnection(connection);
-        }
+            return mapCurrentRow(rs);
+
+        });
     }
 
     public <T> T selectRow(Class<T> cls) {
-        Map<String, Object> row = new HashMap<>();
-        String sql = sb.toString();
-        Connection connection = simpleDb.getConnection();
-        try (
-                Statement stat = connection.createStatement();
-                ResultSet rs = stat.executeQuery(sql);
-        ) {
-            ResultSetMetaData data = rs.getMetaData();
-            int count = data.getColumnCount();
-            if (rs.next()) {
-                for (int i = 1; i <= count; i++) {
-                    String name = data.getColumnName(i);
-                    Object value = rs.getObject(i);
-                    row.put(name, value);
-                }
+        return executeQuery(rs -> {
+            if (!rs.next()) {
+                return cls.getDeclaredConstructor().newInstance();
             }
-            // HashMap -> 객체로 변환해야 함 제네릭하게 작동하기 위해서 리플렉션 사용
-            T obj = cls.getDeclaredConstructor().newInstance(); // cls 타입 객체 생성
-
-            for (String key : row.keySet()) { // 순회 후 매핑
-                Field field = cls.getDeclaredField(key);
-                field.setAccessible(true);
-                field.set(obj, row.get(key));
-            }
-
-            return obj;
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            simpleDb.releaseConnection(connection);
-        }
+            return mapCurrentRow(rs, cls);
+        });
     }
 
     public LocalDateTime selectDatetime() {
@@ -269,29 +222,29 @@ public class Sql {
     public Long selectLong() {
         return executeQuery(rs ->
         {
-           if(rs.next()) {
-               rs.getLong(1);
-           }
-           throw new RuntimeException("조회 결과가 없어요.");
+            if (rs.next()) {
+                rs.getLong(1);
+            }
+            throw new RuntimeException("조회 결과가 없어요.");
         });
     }
 
     public String selectString() {
-       return executeQuery(rs -> {
-           if (rs.next()) {
-               rs.getString(1);
-           }
-           throw new RuntimeException("조회 결과 없어요.");
-       });
+        return executeQuery(rs -> {
+            if (rs.next()) {
+                rs.getString(1);
+            }
+            throw new RuntimeException("조회 결과 없어요.");
+        });
     }
 
     public Boolean selectBoolean() {
-       return executeQuery(rs -> {
+        return executeQuery(rs -> {
             if (rs.next()) {
                 return rs.getBoolean(1);
             }
-          throw new RuntimeException("조회 결과 없어요.");
-       });
+            throw new RuntimeException("조회 결과 없어요.");
+        });
     }
 
     /**
@@ -308,7 +261,7 @@ public class Sql {
                     result = rs.getLong(i);
                 }
                 foundIds.add(result);
-        }
+            }
             throw new RuntimeException("조회 결과 없어요.");
         });
     }
