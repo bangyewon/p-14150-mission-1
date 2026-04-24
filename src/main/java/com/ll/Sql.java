@@ -11,6 +11,27 @@ public class Sql {
     private final SimpleDb simpleDb;
     private final StringBuilder sb = new StringBuilder(); // sql 쌓임
 
+    @FunctionalInterface
+    private interface ResultSetHandler<T> {
+        T handle(ResultSet rs) throws Exception;
+    }
+
+    private <T> T executeQuery(ResultSetHandler<T> handler) {
+        String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
+
+        try (
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(sql);
+        ) {
+            return handler.handle(rs);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
+        }
+    }
+
     public Sql(SimpleDb simpleDb) {
         this.simpleDb = simpleDb;
     }
@@ -237,83 +258,40 @@ public class Sql {
     }
 
     public LocalDateTime selectDatetime() {
-        String sql = sb.toString();
-        Connection connection = simpleDb.getConnection();
-        try (
-                Statement stat = connection.createStatement();
-                ResultSet rs = stat.executeQuery(sql);
-        ) {
-            // rs에서 시간 값 꺼내서 LocalDateTime 변환
+        return executeQuery(rs -> {
             if (rs.next()) {
                 return rs.getTimestamp(1).toLocalDateTime();
             }
-            throw new RuntimeException("결과가 없습니다.");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            simpleDb.releaseConnection(connection);
-        }
+            throw new RuntimeException("조회 결과 없어요.");
+        });
     }
 
     public Long selectLong() {
-        String sql = sb.toString();
-
-        Connection connection = simpleDb.getConnection();
-        try (
-                Statement stat = connection.createStatement();
-                ResultSet rs = stat.executeQuery(sql);
-        ) {
-            if (rs.next()) {
-                return rs.getLong(1);
-            }
-
-            throw new RuntimeException("조회 결과가 없습니다.");
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            simpleDb.releaseConnection(connection);
-        }
+        return executeQuery(rs ->
+        {
+           if(rs.next()) {
+               rs.getLong(1);
+           }
+           throw new RuntimeException("조회 결과가 없어요.");
+        });
     }
 
     public String selectString() {
-        String sql = sb.toString();
-        Connection connection = simpleDb.getConnection();
-        try (
-                Statement stat = connection.createStatement();
-                ResultSet rs = stat.executeQuery(sql);
-        ) {
-            if (rs.next()) {
-                return rs.getString(1);
-            }
-
-            throw new RuntimeException("조회 결과가 없습니다.");
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            simpleDb.releaseConnection(connection);
-        }
+       return executeQuery(rs -> {
+           if (rs.next()) {
+               rs.getString(1);
+           }
+           throw new RuntimeException("조회 결과 없어요.");
+       });
     }
 
     public Boolean selectBoolean() {
-        String sql = sb.toString();
-        Connection connection = simpleDb.getConnection();
-        try (
-                Statement stat = connection.createStatement();
-                ResultSet rs = stat.executeQuery(sql);
-        ) {
+       return executeQuery(rs -> {
             if (rs.next()) {
                 return rs.getBoolean(1);
             }
-
-            throw new RuntimeException("조회 결과가 없습니다.");
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            simpleDb.releaseConnection(connection);
-        }
+          throw new RuntimeException("조회 결과 없어요.");
+       });
     }
 
     /**
@@ -321,12 +299,7 @@ public class Sql {
      */
     public List<Long> selectLongs() {
         List<Long> foundIds = new ArrayList<>();
-        String sql = sb.toString();
-        Connection connection = simpleDb.getConnection();
-        try (
-                Statement stat = connection.createStatement();
-                ResultSet rs = stat.executeQuery(sql);
-        ) {
+        return executeQuery(rs -> {
             ResultSetMetaData data = rs.getMetaData();
             int count = data.getColumnCount();
             while (rs.next()) {
@@ -335,13 +308,9 @@ public class Sql {
                     result = rs.getLong(i);
                 }
                 foundIds.add(result);
-            }
-            return foundIds;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            simpleDb.releaseConnection(connection);
         }
+            throw new RuntimeException("조회 결과 없어요.");
+        });
     }
 
 }
