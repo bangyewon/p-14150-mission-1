@@ -65,6 +65,10 @@ public class SimpleDb {
         return new Sql(this);
     }
 
+    /**
+     * 트랜잭션 아님 -> getConnection()이 새 커넥션 생성 -> 끝나면 releaseConnection()이 닫음
+     * 트랜잭션 중 -> getConnection()이 공유 커넥션 반환 -> 끝나도 releaseConnection()은 닫지 않음 - rollbacok,commit이 닫도록 수정
+     */
     public Connection getConnection() {
         try {
             if (inTransaction) {
@@ -75,6 +79,18 @@ public class SimpleDb {
             }
 
             return DriverManager.getConnection(url, username, password);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    // 반환 여부에 대해서 SimpleDb가 결정하기 위함
+    public void releaseConnection(Connection connection) {
+        try {
+            if(connection == null || connection.isClosed()) return;
+            // 현재 트랜잭션에서 관리 중인 공유 커넥션인지 확인
+            if(inTransaction && this.connection == connection)
+                    return;
+            connection.close();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -110,6 +126,9 @@ public class SimpleDb {
             inTransaction = false;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            connection = null;
+            inTransaction = false;
         }
     }
 
@@ -120,10 +139,12 @@ public class SimpleDb {
                 connection.setAutoCommit(true);
                 connection.close();
             }
-            connection = null;
-            inTransaction = false;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            connection = null;
+            inTransaction = false;
+
         }
     }
 

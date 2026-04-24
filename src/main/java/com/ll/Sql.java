@@ -75,25 +75,29 @@ public class Sql {
 
     public int update() {
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
         ) {
             return stat.executeUpdate(sql);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
     public int delete() {
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
         ) {
             return stat.executeUpdate(sql);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
@@ -101,8 +105,8 @@ public class Sql {
     public List<Map<String, Object>> selectRows() {
         ArrayList<Map<String, Object>> rows = new ArrayList<>();
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql); // 데이터에 관한 정보
         ) {
@@ -122,6 +126,8 @@ public class Sql {
             return rows;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
@@ -133,8 +139,8 @@ public class Sql {
     public <T> List<T> selectRows(Class<T> cls) {
         List<T> rows = new ArrayList<>();
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql);
         ) {
@@ -164,6 +170,8 @@ public class Sql {
             return rows;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
@@ -171,8 +179,8 @@ public class Sql {
     public Map<String, Object> selectRow() {
         Map<String, Object> row = new HashMap<>();
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql);
         ) {
@@ -188,14 +196,16 @@ public class Sql {
             return row;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
     public <T> T selectRow(Class<T> cls) {
         Map<String, Object> row = new HashMap<>();
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql);
         ) {
@@ -221,13 +231,15 @@ public class Sql {
 
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
     public LocalDateTime selectDatetime() {
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql);
         ) {
@@ -238,14 +250,16 @@ public class Sql {
             throw new RuntimeException("결과가 없습니다.");
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
     public Long selectLong() {
         String sql = sb.toString();
 
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql);
         ) {
@@ -257,13 +271,15 @@ public class Sql {
 
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
     public String selectString() {
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql);
         ) {
@@ -275,13 +291,15 @@ public class Sql {
 
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
     public Boolean selectBoolean() {
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql);
         ) {
@@ -293,6 +311,8 @@ public class Sql {
 
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
@@ -302,8 +322,8 @@ public class Sql {
     public List<Long> selectLongs() {
         List<Long> foundIds = new ArrayList<>();
         String sql = sb.toString();
+        Connection connection = simpleDb.getConnection();
         try (
-                Connection connection = simpleDb.getConnection();
                 Statement stat = connection.createStatement();
                 ResultSet rs = stat.executeQuery(sql);
         ) {
@@ -319,6 +339,8 @@ public class Sql {
             return foundIds;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            simpleDb.releaseConnection(connection);
         }
     }
 
