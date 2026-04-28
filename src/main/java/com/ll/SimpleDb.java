@@ -71,25 +71,27 @@ public class SimpleDb {
      */
     public Connection getConnection() {
         try {
-            if (inTransaction) {
-                if (connection == null || connection.isClosed()) {
-                    connection = DriverManager.getConnection(url, username, password);
-                }
-                return connection;
+            if (!inTransaction) {
+                return DriverManager.getConnection(url, username, password);
             }
 
-            return DriverManager.getConnection(url, username, password);
+            if (connection == null || connection.isClosed()) {
+                connection = DriverManager.getConnection(url, username, password);
+            }
+
+            return connection;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
+
     // 반환 여부에 대해서 SimpleDb가 결정하기 위함
     public void releaseConnection(Connection connection) {
         try {
-            if(connection == null || connection.isClosed()) return;
+            if (connection == null || connection.isClosed()) return;
             // 현재 트랜잭션에서 관리 중인 공유 커넥션인지 확인
-            if(inTransaction && this.connection == connection)
-                    return;
+            if (inTransaction && this.connection == connection)
+                return;
             connection.close();
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -97,7 +99,11 @@ public class SimpleDb {
     }
 
     public void close() {
+
         try {
+            if(connection.isClosed()) {
+                throw new IllegalStateException("연결할 수 없습니다.");
+            }
             if (connection != null && !connection.isClosed()) {
                 connection.close();
             }
@@ -115,36 +121,47 @@ public class SimpleDb {
             throw new RuntimeException(e);
         }
     }
-
+//TODO 세부 예외상황이 부족함 수정 필요
     public void rollback() {
         // connection연결이 되어있다면 롤백 가능
+        if(!inTransaction || connection == null) {
+            throw new IllegalStateException("활성되어 있는 트랜잭션이 없기에 되돌릴 수 없습니다.");
+        }
         try {
+            if(connection.isClosed()) {
+                throw new IllegalStateException("연결할 수 없습니다.");
+            }
             if (connection != null && !connection.isClosed()) {
                 connection.rollback();
                 connection.setAutoCommit(true);
                 connection.close();
+
+                connection = null;
+                inTransaction = false;
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
-        } finally {
-            connection = null;
-            inTransaction = false;
         }
     }
 
     public void commit() {
+        if(!isInTransaction() || connection == null) {
+            throw new IllegalStateException("활성되어 있는 트랜잭션이 없기에 되돌릴 수 없습니다.");
+        }
         try {
+            if(connection.isClosed()) {
+                throw new IllegalStateException("연결할 수 없습니다.");
+            }
             if (connection != null && !connection.isClosed()) {
                 connection.commit();
                 connection.setAutoCommit(true);
                 connection.close();
+
+                connection = null;
+                inTransaction = false;
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
-        } finally {
-            connection = null;
-            inTransaction = false;
-
         }
     }
 
